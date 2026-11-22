@@ -264,12 +264,25 @@
     return null;
   })();
 
+  // Padrões "fortes": se baterem, é quase certeza que é link de vaga.
   const JOB_LINK_PATTERN = {
     linkedin: /\/jobs\/view\//,
     gupy: /gupy\.io\/(job|vaga)\//,
     catho: /catho\.com\.br\/vagas\/.+\d/,
     infojobs: /infojobs\.com\.br\/vaga-de-.+__\d+/,
     vagascom: /vagas\.com\.br\/vagas\/v\d+/,
+  };
+  // Padrão "fraco" (fallback): a estrutura real de cada site muda com frequência e não
+  // temos como validar ao vivo contra as 5 plataformas, então se o padrão forte não achar
+  // nada, caímos para uma checagem mais larga (segmento do path + exclui páginas óbvias
+  // de navegação) em vez de simplesmente não mostrar nada pro candidato.
+  const NOT_A_JOB = /login|entrar|cadastr|sign[_-]?up|sign[_-]?in|termos|privacidade|ajuda|suporte|sobre[_-]?nos|empresa\/|anuncie|planos|blog|carreira-sucesso|^\/$|whatsapp|facebook\.com|instagram\.com|linkedin\.com\/company/i;
+  const JOB_PATH_HINT = {
+    linkedin: /\/jobs\//,
+    gupy: /\.gupy\.io\/(job|vaga)/,
+    catho: /catho\.com\.br\/vagas?\//,
+    infojobs: /infojobs\.com\.br\/vaga/,
+    vagascom: /vagas\.com\.br\/vagas?\//,
   };
 
   function nearestCard(a) {
@@ -283,20 +296,27 @@
   }
 
   function scrapeSearchResults(site) {
-    const pattern = JOB_LINK_PATTERN[site];
+    const strong = JOB_LINK_PATTERN[site];
+    const weak = JOB_PATH_HINT[site];
     const self = location.href.split("?")[0];
-    const out = [], seen = new Set();
-    document.querySelectorAll("a[href]").forEach((a) => {
-      const href = (a.href || "").split("?")[0];
-      if (!href || href === self || seen.has(href) || !pattern.test(href)) return;
-      const card = nearestCard(a);
-      const heading = card.querySelector("h1,h2,h3,h4,strong") || a;
-      const title = (heading.innerText || a.innerText || "").trim();
-      if (!title || title.length < 3 || title.length > 300) return;
-      seen.add(href);
-      out.push({ title: title.slice(0, 300), company: null, location: null, url: href, description: (card.innerText || "").trim().slice(0, 2000) || null });
-    });
-    return out.slice(0, 40);
+
+    function pass(matcher) {
+      const out = [], seen = new Set();
+      document.querySelectorAll("a[href]").forEach((a) => {
+        const href = (a.href || "").split("?")[0];
+        if (!href || href === self || seen.has(href) || NOT_A_JOB.test(href) || !matcher.test(href)) return;
+        const card = nearestCard(a);
+        const heading = card.querySelector("h1,h2,h3,h4,strong") || a;
+        const title = (heading.innerText || a.innerText || "").trim();
+        if (!title || title.length < 3 || title.length > 300) return;
+        seen.add(href);
+        out.push({ title: title.slice(0, 300), company: null, location: null, url: href, description: (card.innerText || "").trim().slice(0, 2000) || null });
+      });
+      return out.slice(0, 40);
+    }
+
+    const strongHits = pass(strong);
+    return strongHits.length ? strongHits : pass(weak);
   }
 
   function searchBanner(state) {
@@ -329,19 +349,35 @@
   if (SEARCH_SITE) {
     chrome.storage.local.get(["jobPlatforms"], ({ jobPlatforms }) => {
       if (!jobPlatforms || !jobPlatforms.includes(SEARCH_SITE)) return; // opt-in por plataforma (Configurações, na plataforma)
-      setTimeout(() => {
+
+      let lastCount = -1, tries = 0, settled = false;
+      const maxTries = 10; // ~ 15s de tentativas — cobre SPA/lazy-load lenta e rolagem do usuário
+      const timer = setInterval(() => {
+        tries++;
         const jobs = scrapeSearchResults(SEARCH_SITE);
-        if (!jobs.length) return;
-        searchBanner({
-          text: `Encontrei ${jobs.length} vaga(s) nesta busca.`,
-          showButton: true,
-          onGo: async (e) => {
-            e.target.textContent = "Importando…"; e.target.disabled = true;
-            const r = await send({ type: "api", path: "/api/ext/jobs-found", method: "POST", body: { platform: SEARCH_SITE, jobs } });
-            searchBanner({ text: r.ok ? `Importado(s) ${r.data.saved} vaga(s). Veja em Candidata.ai → Buscar vagas.` : `Erro: ${r.error}`, showButton: false });
-          },
-        });
-      }, 1800); // espera a página (muitas são SPA) terminar de renderizar os resultados
+        const stable = jobs.length === lastCount;
+        lastCount = jobs.length;
+        // só mostra/atualiza quando o número parar de crescer por uma rodada, ou no fim das tentativas
+        if (jobs.length && (stable || tries >= maxTries)) {
+          settled = true;
+          clearInterval(timer);
+          searchBanner({
+            text: `Encontrei ${jobs.length} vaga(s) nesta busca.`,
+            showButton: true,
+            onGo: async (e) => {
+              e.target.textContent = "Importando…"; e.target.disabled = true;
+              const r = await send({ type: "api", path: "/api/ext/jobs-found", method: "POST", body: { platform: SEARCH_SITE, jobs } });
+              searchBanner({ text: r.ok ? `Importado(s) ${r.data.saved} vaga(s). Veja em Candidata.ai → Buscar vagas.` : `Erro: ${r.error}`, showButton: false });
+            },
+          });
+        } else if (tries >= maxTries && !settled) {
+          clearInterval(timer);
+          // Feedback explícito em vez de falhar calado: ou não há vagas na tela, ou o site mudou
+          // e nosso jeito de reconhecer vaga ficou desatualizado — o candidato sabe que pode
+          // rolar a página e tentar nessa aba de novo, ou nos avisar.
+          searchBanner({ text: "Não consegui reconhecer vagas nesta página. Role a tela até aparecerem os resultados, ou avise o suporte se continuar assim.", showButton: false });
+        }
+      }, 1500);
     });
   }
 
