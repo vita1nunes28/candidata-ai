@@ -10,6 +10,7 @@ const schema = z.object({
   timezone: z.string().max(60),
   answer_char_limit: z.number().int().min(100).max(3000),
   company_boards: z.array(z.object({ ats: z.enum(["greenhouse", "lever"]), slug: z.string().trim().regex(/^[a-z0-9-_.]+$/i).max(60) })).max(50),
+  job_platforms: z.array(z.enum(["linkedin", "gupy", "catho", "infojobs", "vagascom"])).max(10).optional(),
 });
 
 export const PUT = route(async (req: Request) => {

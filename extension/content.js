@@ -13,13 +13,16 @@
     const onPlatform = apiBase ? location.origin === apiBase : /^\/(extensao|teste-formulario)/.test(location.pathname);
     if (onPlatform || /^\/(extensao|teste-formulario)/.test(location.pathname)) document.documentElement.dataset.candidataExt = VERSION;
   });
-  if (location.pathname.startsWith("/extensao/conectar")) {
-    window.addEventListener("message", async (e) => {
-      if (e.source !== window || e.origin !== location.origin || e.data?.type !== "CANDIDATA_TOKEN") return;
+  window.addEventListener("message", async (e) => {
+    if (e.source !== window || e.origin !== location.origin) return;
+    if (e.data?.type === "CANDIDATA_TOKEN" && location.pathname.startsWith("/extensao/conectar")) {
       const r = await send({ type: "saveToken", token: e.data.token, apiBase: e.data.apiBase });
       if (r.ok) window.postMessage({ type: "CANDIDATA_TOKEN_OK" }, location.origin);
-    });
-  }
+    }
+    if (e.data?.type === "CANDIDATA_JOB_PLATFORMS") {
+      await send({ type: "saveJobPlatforms", platforms: e.data.platforms ?? [] });
+    }
+  });
 
   // ---------- 2. Leitura da vaga ----------
   function jobText() {
@@ -246,6 +249,100 @@
       const r = await send({ type: "api", path: "/api/ext/applied", method: "POST", body: { url: location.href, title: jobTitle(), description: isLinkedIn ? undefined : jobText().slice(0, 15000) } });
       e.target.textContent = r.ok ? "Registrado no histórico ✓" : "Erro: " + r.error;
     };
+  }
+
+  // ---------- 7. Busca em plataformas de vagas (LinkedIn, Gupy, Catho, InfoJobs, Vagas.com) ----------
+  // A pessoa navega e pesquisa normalmente, logada no site dela. A extensão só lê o que já está
+  // na tela (como a pessoa leria) e manda pro Candidata.ai para pontuar contra o perfil, se ela autorizar.
+  const SEARCH_SITE = (() => {
+    const h = location.hostname, p = location.pathname;
+    if (/(^|\.)linkedin\.com$/.test(h) && p.startsWith("/jobs/search")) return "linkedin";
+    if (/gupy\.io$/.test(h) && p.includes("job-search")) return "gupy";
+    if (/(^|\.)catho\.com\.br$/.test(h) && p.startsWith("/vagas/")) return "catho";
+    if (/(^|\.)infojobs\.com\.br$/.test(h) && /empregos\.aspx|vagas-de-emprego/.test(p)) return "infojobs";
+    if (/(^|\.)vagas\.com\.br$/.test(h) && p.startsWith("/vagas-de-")) return "vagascom";
+    return null;
+  })();
+
+  const JOB_LINK_PATTERN = {
+    linkedin: /\/jobs\/view\//,
+    gupy: /gupy\.io\/(job|vaga)\//,
+    catho: /catho\.com\.br\/vagas\/.+\d/,
+    infojobs: /infojobs\.com\.br\/vaga-de-.+__\d+/,
+    vagascom: /vagas\.com\.br\/vagas\/v\d+/,
+  };
+
+  function nearestCard(a) {
+    let el = a, best = a.parentElement;
+    for (let i = 0; i < 6 && el?.parentElement; i++) {
+      el = el.parentElement;
+      const t = (el.innerText || "").trim();
+      if (t.length > 30 && t.length < 1500) { best = el; break; }
+    }
+    return best || a.parentElement || a;
+  }
+
+  function scrapeSearchResults(site) {
+    const pattern = JOB_LINK_PATTERN[site];
+    const self = location.href.split("?")[0];
+    const out = [], seen = new Set();
+    document.querySelectorAll("a[href]").forEach((a) => {
+      const href = (a.href || "").split("?")[0];
+      if (!href || href === self || seen.has(href) || !pattern.test(href)) return;
+      const card = nearestCard(a);
+      const heading = card.querySelector("h1,h2,h3,h4,strong") || a;
+      const title = (heading.innerText || a.innerText || "").trim();
+      if (!title || title.length < 3 || title.length > 300) return;
+      seen.add(href);
+      out.push({ title: title.slice(0, 300), company: null, location: null, url: href, description: (card.innerText || "").trim().slice(0, 2000) || null });
+    });
+    return out.slice(0, 40);
+  }
+
+  function searchBanner(state) {
+    let host = document.getElementById("candidata-search-host");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "candidata-search-host";
+      host.style.cssText = "position:fixed;bottom:12px;right:12px;z-index:2147483647;";
+      document.documentElement.appendChild(host);
+      host.attachShadow({ mode: "open" });
+    }
+    const root = host.shadowRoot;
+    const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    root.innerHTML = `
+      <style>
+        :host{all:initial}
+        .b{width:280px;background:#fff;color:#1B2547;border:1px solid #D9DEEC;border-radius:14px;box-shadow:0 10px 30px rgba(17,22,42,.25);font:14px/1.4 system-ui,sans-serif;padding:12px}
+        button.p{background:#22305C;color:#fff;border:0;border-radius:8px;padding:7px 10px;font-weight:700;cursor:pointer}
+        .x{float:right;border:0;background:none;font-size:16px;cursor:pointer;color:#5B6585}
+      </style>
+      <div class="b" role="status">
+        <button class="x" id="x" aria-label="Fechar">×</button>
+        <div>${esc(state.text)}</div>
+        ${state.showButton ? `<div style="margin-top:8px"><button class="p" id="go">Importar pro Candidata.ai</button></div>` : ""}
+      </div>`;
+    root.getElementById("x").onclick = () => host.remove();
+    if (state.onGo) root.getElementById("go").onclick = state.onGo;
+  }
+
+  if (SEARCH_SITE) {
+    chrome.storage.local.get(["jobPlatforms"], ({ jobPlatforms }) => {
+      if (!jobPlatforms || !jobPlatforms.includes(SEARCH_SITE)) return; // opt-in por plataforma (Configurações, na plataforma)
+      setTimeout(() => {
+        const jobs = scrapeSearchResults(SEARCH_SITE);
+        if (!jobs.length) return;
+        searchBanner({
+          text: `Encontrei ${jobs.length} vaga(s) nesta busca.`,
+          showButton: true,
+          onGo: async (e) => {
+            e.target.textContent = "Importando…"; e.target.disabled = true;
+            const r = await send({ type: "api", path: "/api/ext/jobs-found", method: "POST", body: { platform: SEARCH_SITE, jobs } });
+            searchBanner({ text: r.ok ? `Importado(s) ${r.data.saved} vaga(s). Veja em Candidata.ai → Buscar vagas.` : `Erro: ${r.error}`, showButton: false });
+          },
+        });
+      }, 1800); // espera a página (muitas são SPA) terminar de renderizar os resultados
+    });
   }
 
   chrome.runtime.onMessage.addListener((msg, _s, reply) => {

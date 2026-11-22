@@ -1,9 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, Notice, PageTitle } from "@/components/ui";
 import type { Settings } from "@/lib/settings";
 
 const ZONES = ["America/Sao_Paulo", "America/Manaus", "America/Belem", "America/Fortaleza", "America/Recife", "America/Cuiaba", "America/Rio_Branco", "America/Noronha", "Europe/Lisbon"];
+
+const PLATFORMS: { id: string; label: string; note: string }[] = [
+  { id: "linkedin", label: "LinkedIn", note: "Só leitura de resultados e respostas para copiar — o LinkedIn proíbe preenchimento automático." },
+  { id: "gupy", label: "Gupy", note: "Leitura de resultados e preenchimento automático do formulário." },
+  { id: "catho", label: "Catho", note: "Leitura de resultados e preenchimento automático do formulário." },
+  { id: "infojobs", label: "InfoJobs", note: "Leitura de resultados e preenchimento automático do formulário." },
+  { id: "vagascom", label: "Vagas.com", note: "Leitura de resultados e preenchimento automático do formulário." },
+];
 
 export function ConfigClient({ accounts, ext, settings, flash }: { accounts: any[]; ext: any; settings: Settings; flash?: string }) {
   const [s, setS] = useState(settings);
@@ -11,10 +19,19 @@ export function ConfigClient({ accounts, ext, settings, flash }: { accounts: any
   const [showWarning, setShowWarning] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: "ok" | "error"; text: string } | null>(flash ? { tone: "ok", text: flash } : null);
 
+  useEffect(() => {
+    window.postMessage({ type: "CANDIDATA_JOB_PLATFORMS", platforms: s.job_platforms }, location.origin);
+  }, []); // sincroniza o que já está salvo com a extensão assim que a página carrega
+
+  function togglePlatform(id: string) {
+    setS((cur) => ({ ...cur, job_platforms: cur.job_platforms.includes(id) ? cur.job_platforms.filter((p) => p !== id) : [...cur.job_platforms, id] }));
+  }
+
   async function save() {
     try {
       const company_boards = boards.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => { const [ats, slug] = l.split(":"); return { ats: ats.trim().toLowerCase(), slug: (slug ?? "").trim() }; });
       await api("/api/settings", { method: "PUT", json: { ...s, company_boards } });
+      window.postMessage({ type: "CANDIDATA_JOB_PLATFORMS", platforms: s.job_platforms }, location.origin);
       setMsg({ tone: "ok", text: "Configurações salvas." });
     } catch (e) { setMsg({ tone: "error", text: (e as Error).message }); }
   }
@@ -64,6 +81,24 @@ export function ConfigClient({ accounts, ext, settings, flash }: { accounts: any
           <textarea id="boards" className="field min-h-24" value={boards} onChange={(e) => setBoards(e.target.value)} placeholder={"greenhouse:nubank\nlever:empresa"} />
           <p className="muted text-sm mt-1">O nome vem do endereço de vagas da empresa: em boards.greenhouse.io/<strong>nubank</strong> é “nubank”; em jobs.lever.co/<strong>empresa</strong> é “empresa”.</p>
         </div>
+      </section>
+
+      <section className="surface p-6 mb-6 space-y-3">
+        <h2 className="text-xl font-bold">Buscar também nestas plataformas (via extensão)</h2>
+        <p className="muted">
+          A busca por Adzuna cobre pouca coisa no Brasil. Marque abaixo as plataformas onde você quer que a extensão ajude: entre e pesquise normalmente,
+          <strong> logada</strong>, nessas plataformas — a extensão vai avisar quantas vagas encontrou na tela e, com um clique seu, importa pro Candidata.ai
+          pra pontuar contra seu perfil e entrar no mesmo painel de Buscar vagas. Nada é importado sem você clicar em “Importar”.
+        </p>
+        <ul className="space-y-2">
+          {PLATFORMS.map((p) => (
+            <li key={p.id} className="flex items-start gap-2">
+              <input type="checkbox" id={`pf-${p.id}`} className="mt-1" checked={s.job_platforms.includes(p.id)} onChange={() => togglePlatform(p.id)} />
+              <label htmlFor={`pf-${p.id}`}><strong>{p.label}</strong> — <span className="muted text-sm">{p.note}</span></label>
+            </li>
+          ))}
+        </ul>
+        {!ext && <p className="muted text-sm">Isso só funciona com a extensão instalada e conectada (abaixo).</p>}
       </section>
       <button className="btn btn-primary mb-10" onClick={save}>Salvar configurações</button>
 

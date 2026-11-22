@@ -42,6 +42,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
         await chrome.storage.local.set({ token: msg.token, apiBase: msg.apiBase });
         return reply({ ok: true });
       }
+      if (msg.type === "saveJobPlatforms") {
+        await chrome.storage.local.set({ jobPlatforms: msg.platforms });
+        return reply({ ok: true });
+      }
       if (msg.type === "logout") {
         await chrome.storage.local.clear();
         return reply({ ok: true });

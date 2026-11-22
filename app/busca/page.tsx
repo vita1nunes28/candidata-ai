@@ -83,6 +83,7 @@ export default function Busca() {
         </div>
         <button className="btn btn-primary" disabled={!!busy}>Buscar</button>
         <p className="muted text-sm">Para buscar vagas de empresas específicas no Greenhouse e Lever, cadastre-as em <Link className="underline" href="/configuracoes">Configurações</Link>.</p>
+        <Notice>Poucas vagas aqui? A Adzuna cobre pouco o Brasil. Em <Link className="underline" href="/configuracoes">Configurações</Link>, ative a busca em LinkedIn, Gupy, Catho, InfoJobs e Vagas.com: você pesquisa normalmente, logada, nessas plataformas, e a extensão avisa e importa as vagas que encontrar pra cá, com nota de aderência.</Notice>
       </form>
 
       <details className="surface p-6 mb-6">

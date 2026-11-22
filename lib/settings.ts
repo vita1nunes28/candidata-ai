@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS = {
   auto_send_enabled: false,
   answer_char_limit: 600,
   company_boards: [] as { ats: "greenhouse" | "lever"; slug: string }[],
+  job_platforms: [] as string[], // ex.: ["linkedin","gupy","catho","infojobs","vagascom"] — busca via extensão, com a sessão logada do candidato
 };
 export type Settings = typeof DEFAULT_SETTINGS;
 

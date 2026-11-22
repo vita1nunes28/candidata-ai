@@ -66,31 +66,81 @@ export default async function Home() {
 
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-bold">Histórico</h2>
+          <h2 className="text-xl font-bold">Suas candidaturas</h2>
           <a className="btn btn-ghost text-sm" href="/api/export">Exportar CSV</a>
         </div>
         {list.length === 0 ? (
           <div className="surface p-6"><p>Nenhuma vaga salva ainda.</p><Link className="btn btn-primary mt-3" href="/busca">Buscar vagas</Link></div>
         ) : (
-          <ul className="surface divide-y" style={{ borderColor: "var(--line)" }}>
-            {list.slice(0, 60).map((j) => {
-              const job = j.jobs as unknown as { title: string; company: string; url: string };
-              return (
-                <li key={j.id} className="p-4 flex flex-wrap items-center gap-3 justify-between" style={{ borderColor: "var(--line)" }}>
-                  <div className="min-w-0">
-                    <Link href={`/vagas/${j.id}`} className="font-bold hover:underline">{job.title}</Link>
-                    <div className="muted text-sm">{job.company}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Stamp status={j.status} />
-                    {["enviada", "formulario"].includes(j.status) && <MarkReply id={j.id} />}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <Kanban list={list as any} />
         )}
       </section>
     </>
+  );
+}
+
+type JobRow = { id: string; status: string; applied_at: string | null; jobs: { title: string; company: string; url: string } };
+
+const COLUMNS: { key: string; title: string; statuses: string[]; blurb: string }[] = [
+  { key: "salva", title: "1 · Salvas", statuses: ["salva"], blurb: "Próximo passo: gerar a candidatura (e-mail ou dados para o formulário)." },
+  { key: "gerada", title: "2 · Candidatura pronta", statuses: ["gerada"], blurb: "Próximo passo: revisar o texto e enviar." },
+  { key: "enviada", title: "3 · Enviada, aguardando", statuses: ["enviada", "formulario"], blurb: "Candidatura já saiu. Marque aqui quando a empresa responder." },
+  { key: "resposta", title: "4 · Respondeu", statuses: ["resposta"], blurb: "A empresa deu retorno — confira e decida os próximos passos." },
+];
+
+function nextAction(status: string): string {
+  return (
+    {
+      salva: "Gerar candidatura",
+      gerada: "Revisar e enviar",
+      enviada: "Ver candidatura",
+      formulario: "Ver candidatura",
+      resposta: "Ver resposta",
+    }[status] ?? "Ver"
+  );
+}
+
+function Kanban({ list }: { list: JobRow[] }) {
+  const descartadas = list.filter((j) => j.status === "descartada");
+  return (
+    <div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {COLUMNS.map((col) => {
+          const items = list.filter((j) => col.statuses.includes(j.status));
+          return (
+            <div key={col.key} className="surface p-4">
+              <h3 className="font-bold mb-1">{col.title} <span className="muted font-normal">({items.length})</span></h3>
+              <p className="muted text-xs mb-3">{col.blurb}</p>
+              <ul className="space-y-2">
+                {items.length === 0 && <li className="muted text-sm">Nada aqui ainda.</li>}
+                {items.map((j) => (
+                  <li key={j.id} className="rounded-xl border p-3" style={{ borderColor: "var(--line)" }}>
+                    <Link href={`/vagas/${j.id}`} className="font-bold hover:underline block">{j.jobs.title}</Link>
+                    <div className="muted text-sm mb-2">{j.jobs.company}</div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Link href={`/vagas/${j.id}`} className="btn btn-primary text-sm py-1">{nextAction(j.status)}</Link>
+                      {["enviada", "formulario"].includes(j.status) && <MarkReply id={j.id} />}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+      {descartadas.length > 0 && (
+        <details className="mt-4">
+          <summary className="text-sm underline cursor-pointer">Vagas descartadas ({descartadas.length})</summary>
+          <ul className="surface divide-y mt-2" style={{ borderColor: "var(--line)" }}>
+            {descartadas.map((j) => (
+              <li key={j.id} className="p-3 flex items-center justify-between" style={{ borderColor: "var(--line)" }}>
+                <Link href={`/vagas/${j.id}`} className="hover:underline">{j.jobs.title} · {j.jobs.company}</Link>
+                <Stamp status={j.status} />
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
   );
 }
