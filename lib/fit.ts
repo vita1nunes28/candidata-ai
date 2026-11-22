@@ -33,7 +33,10 @@ export async function scoreUserJobs(admin: SupabaseClient, userId: string, userJ
       );
     } catch (e) {
       if (e instanceof LLMQuotaError || (e as { status?: number }).status === 429) return { skipped: (e as Error).message };
-      throw e;
+      // Falha da IA (ex.: Gemini instável/503) não pode derrubar a busca inteira — as vagas já
+      // foram salvas, melhor mostrá-las sem nota de aderência do que dar erro geral pro candidato.
+      console.error("[fit] erro ao pontuar, seguindo sem nota:", e instanceof Error ? e.message : e);
+      return { skipped: "Não consegui calcular a aderência agora (instabilidade na IA). As vagas abaixo aparecem sem nota — tente atualizar a busca daqui a pouco." };
     }
   }
   return {};
