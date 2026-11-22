@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, FitBadge, Notice, PageTitle, Stamp } from "@/components/ui";
 
 type Item = { id: string; status: string; fit_score: number | null; fit_reason: string | null; jobs: any };
@@ -18,6 +18,11 @@ export default function Busca() {
   const [url, setUrl] = useState("");
   const [manual, setManual] = useState(false);
   const [man, setMan] = useState({ title: "", company: "", url: "", description: "" });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+  }, []);
 
   async function search(e: React.FormEvent) {
     e.preventDefault();
@@ -83,7 +88,14 @@ export default function Busca() {
         </div>
         <button className="btn btn-primary" disabled={!!busy}>Buscar</button>
         <p className="muted text-sm">Para buscar vagas de empresas específicas no Greenhouse e Lever, cadastre-as em <Link className="underline" href="/configuracoes">Configurações</Link>.</p>
-        <Notice>Poucas vagas aqui? A Adzuna cobre pouco o Brasil. Em <Link className="underline" href="/configuracoes">Configurações</Link>, ative a busca em LinkedIn, Gupy, Catho, InfoJobs e Vagas.com: você pesquisa normalmente, logada, nessas plataformas, e a extensão avisa e importa as vagas que encontrar pra cá, com nota de aderência.</Notice>
+        <Notice>
+          Poucas vagas aqui? A Adzuna cobre pouco o Brasil.{" "}
+          {isMobile ? (
+            <>Pelo computador, você pode ativar em <Link className="underline" href="/configuracoes">Configurações</Link> a busca em LinkedIn, Gupy, Catho, InfoJobs e Vagas.com com a extensão — esse recurso não existe no celular. Por aqui, use a importação por link logo abaixo.</>
+          ) : (
+            <>Em <Link className="underline" href="/configuracoes">Configurações</Link>, ative a busca em LinkedIn, Gupy, Catho, InfoJobs e Vagas.com: você pesquisa normalmente, logada, nessas plataformas, e a extensão avisa e importa as vagas que encontrar pra cá, com nota de aderência.</>
+          )}
+        </Notice>
       </form>
 
       <details className="surface p-6 mb-6">

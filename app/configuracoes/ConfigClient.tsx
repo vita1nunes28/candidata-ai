@@ -18,6 +18,11 @@ export function ConfigClient({ accounts, ext, settings, flash }: { accounts: any
   const [boards, setBoards] = useState(settings.company_boards.map((b) => `${b.ats}:${b.slug}`).join("\n"));
   const [showWarning, setShowWarning] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: "ok" | "error"; text: string } | null>(flash ? { tone: "ok", text: flash } : null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)); // extensão de navegador não existe em celular, nem Android nem iOS
+  }, []);
 
   useEffect(() => {
     window.postMessage({ type: "CANDIDATA_JOB_PLATFORMS", platforms: s.job_platforms }, location.origin);
@@ -85,27 +90,36 @@ export function ConfigClient({ accounts, ext, settings, flash }: { accounts: any
 
       <section className="surface p-6 mb-6 space-y-3">
         <h2 className="text-xl font-bold">Buscar também nestas plataformas (via extensão)</h2>
-        <p className="muted">
-          A busca por Adzuna cobre pouca coisa no Brasil. Marque abaixo as plataformas onde você quer que a extensão ajude: entre e pesquise normalmente,
-          <strong> logada</strong>, nessas plataformas — a extensão vai avisar quantas vagas encontrou na tela e, com um clique seu, importa pro Candidata.ai
-          pra pontuar contra seu perfil e entrar no mesmo painel de Buscar vagas. Nada é importado sem você clicar em “Importar”.
-        </p>
-        <ul className="space-y-2">
+        {isMobile ? (
+          <Notice tone="warn">
+            Esse recurso só funciona pelo computador: navegadores de celular (Android e iPhone) não suportam extensões. Pelo celular, use a busca normal
+            acima (Adzuna) e a importação por link logo abaixo — para as outras plataformas, acesse o Candidata.ai pelo computador quando puder.
+          </Notice>
+        ) : (
+          <p className="muted">
+            A busca por Adzuna cobre pouca coisa no Brasil. Marque abaixo as plataformas onde você quer que a extensão ajude: entre e pesquise normalmente,
+            <strong> logada</strong>, nessas plataformas — a extensão vai avisar quantas vagas encontrou na tela e, com um clique seu, importa pro Candidata.ai
+            pra pontuar contra seu perfil e entrar no mesmo painel de Buscar vagas. Nada é importado sem você clicar em “Importar”. Esse recurso só funciona
+            pelo computador — não existe extensão de navegador para celular.
+          </p>
+        )}
+        <ul className={`space-y-2 ${isMobile ? "opacity-50 pointer-events-none" : ""}`}>
           {PLATFORMS.map((p) => (
             <li key={p.id} className="flex items-start gap-2">
-              <input type="checkbox" id={`pf-${p.id}`} className="mt-1" checked={s.job_platforms.includes(p.id)} onChange={() => togglePlatform(p.id)} />
+              <input type="checkbox" id={`pf-${p.id}`} className="mt-1" checked={s.job_platforms.includes(p.id)} onChange={() => togglePlatform(p.id)} disabled={isMobile} />
               <label htmlFor={`pf-${p.id}`}><strong>{p.label}</strong> — <span className="muted text-sm">{p.note}</span></label>
             </li>
           ))}
         </ul>
-        {!ext && <p className="muted text-sm">Isso só funciona com a extensão instalada e conectada (abaixo).</p>}
+        {!ext && !isMobile && <p className="muted text-sm">Isso só funciona com a extensão instalada e conectada (abaixo).</p>}
       </section>
       <button className="btn btn-primary mb-10" onClick={save}>Salvar configurações</button>
 
       <section className="surface p-6 mb-6 space-y-3">
         <h2 className="text-xl font-bold">Extensão</h2>
+        <p className="muted text-sm">Só funciona no Chrome do computador — não existe versão para celular (Android ou iPhone).</p>
         {ext ? <p>Conectada · versão {ext.ext_version ?? "?"}{ext.last_seen && ` · usada em ${new Date(ext.last_seen).toLocaleDateString("pt-BR")}`}</p> : <p className="muted">Não conectada.</p>}
-        <a className="btn btn-ghost" href="/extensao">Instalar ou conectar</a>
+        {!isMobile && <a className="btn btn-ghost" href="/extensao">Instalar ou conectar</a>}
       </section>
 
       <section className="surface p-6 space-y-3">
