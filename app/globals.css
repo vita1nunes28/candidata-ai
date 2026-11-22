@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #F5F7FB;
+  --surface: #FFFFFF;
+  --line: #D9DEEC;
+  --text: #1B2547;
+  --muted: #5B6585;
+  --ink: #22305C;
+  --ink-contrast: #FFFFFF;
+  color-scheme: light;
+}
+.dark {
+  --bg: #11162A;
+  --surface: #192040;
+  --line: #2C3561;
+  --text: #E8EBF7;
+  --muted: #A2AACB;
+  --ink: #9DB0F2;
+  --ink-contrast: #11162A;
+  color-scheme: dark;
+}
+
+html { background: var(--bg); color: var(--text); }
+body { font-family: "Atkinson Hyperlegible", system-ui, sans-serif; font-size: 16px; line-height: 1.55; }
+h1, h2, h3 { font-family: "Bricolage Grotesque", system-ui, sans-serif; letter-spacing: -0.01em; line-height: 1.15; }
+
+@layer components {
+  .surface { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  .muted { color: var(--muted); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border-radius: 10px; padding: .55rem 1rem; font-weight: 700; font-size: .95rem; transition: opacity .15s; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--ink); color: var(--ink-contrast); }
+  .btn-ghost { border: 1px solid var(--line); background: var(--surface); }
+  .btn-danger { background: #B3261E; color: #fff; }
+  .field { width: 100%; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: .55rem .75rem; color: var(--text); }
+  .label { display: block; font-size: .9rem; font-weight: 700; margin-bottom: .3rem; }
+  /* carimbo: o elemento característico da interface (status de cada candidatura) */
+  .stamp { display: inline-block; border: 1.5px dashed currentColor; border-radius: 6px; padding: .05rem .5rem; font-size: .8rem; font-weight: 700; }
+}
+
+:focus-visible { outline: 3px solid #6C86E6; outline-offset: 2px; border-radius: 6px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

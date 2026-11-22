@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<style>
+  body { width: 280px; margin: 0; padding: 14px; font: 14px/1.45 system-ui, sans-serif; color: #1B2547; }
+  h1 { font-size: 16px; margin: 0 0 8px; }
+  button { width: 100%; margin-top: 8px; padding: 9px; border-radius: 8px; border: 1px solid #D9DEEC; background: #fff; font-weight: 700; cursor: pointer; color: #22305C; }
+  button.primary { background: #22305C; color: #fff; border: 0; }
+  .muted { color: #5B6585; font-size: 12px; }
+  .warn { background: #FBF0DA; color: #8A5A10; padding: 6px 8px; border-radius: 8px; }
+  a { color: #22305C; }
+</style>
+</head>
+<body>
+  <h1>Candidata.ai</h1>
+  <div id="state" class="muted">Verificando…</div>
+  <div id="actions" hidden>
+    <button class="primary" id="fill">Preencher este formulário</button>
+    <button id="panel">Mostrar respostas para copiar</button>
+  </div>
+  <div id="connect" hidden>
+    <p>Conecte a extensão à sua conta: na plataforma, abra <strong>Instalar extensão</strong> e clique em <strong>Conectar minha conta</strong>.</p>
+  </div>
+  <p class="muted">A extensão nunca clica em enviar, não resolve captcha e não faz login por você.</p>
+  <button id="logout" hidden>Desconectar extensão</button>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" font-family="Arial, sans-serif"><rect width="640" height="360" rx="12" fill="#FFFFFF" stroke="#DADCE0"/>
+<text x="24" y="40" font-size="18" fill="#202124">Downloads</text>
+<rect x="40" y="80" width="70" height="86" rx="6" fill="#FBF0DA" stroke="#B7791F"/><text x="52" y="132" font-size="14" fill="#B7791F" font-weight="bold">ZIP</text><text x="26" y="190" font-size="12" fill="#3C4043">candidata-extensao.zip</text>
+<rect x="160" y="120" width="210" height="96" rx="8" fill="#F8F9FA" stroke="#DADCE0"/><text x="176" y="148" font-size="13" fill="#3C4043">Abrir</text>
+<rect x="168" y="160" width="194" height="26" rx="4" fill="#E8F0FE"/><text x="176" y="178" font-size="13" fill="#202124">Extrair tudo... / Descompactar</text><rect x="162" y="156" width="204" height="34" rx="10" fill="none" stroke="#6C86E6" stroke-width="4"/>
+<path d="M430 120 h60 l10 12 h80 v80 h-150 z" fill="#FDD663"/><text x="414" y="240" font-size="12" fill="#3C4043">candidata-extensao (pasta)</text>
+<text x="24" y="320" font-size="14" fill="#5F6368">Windows: botão direito → Extrair tudo. Mac: dois cliques no .zip.</text></svg>

@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Candidata.ai",
+  "version": "0.1.0",
+  "description": "Preenche formulários de candidatura com o seu perfil. O envio final é sempre seu.",
+  "icons": { "16": "icon16.png", "48": "icon48.png", "128": "icon128.png" },
+  "action": { "default_popup": "popup.html", "default_icon": { "16": "icon16.png", "48": "icon48.png" } },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    { "matches": ["http://*/*", "https://*/*"], "js": ["fields.js", "content.js"], "run_at": "document_idle", "all_frames": false }
+  ]
+}
