@@ -17,6 +17,8 @@ export const env = {
   msSecret: () => req("MICROSOFT_CLIENT_SECRET"),
   adzunaId: () => process.env.ADZUNA_APP_ID || "",
   adzunaKey: () => process.env.ADZUNA_APP_KEY || "",
+  googleCseKey: () => process.env.GOOGLE_CSE_API_KEY || "",
+  googleCseId: () => process.env.GOOGLE_CSE_CX || "",
   cronSecret: () => req("CRON_SECRET"),
   dailyGenerations: () => Number(process.env.DAILY_GENERATION_LIMIT || 30),
 };
